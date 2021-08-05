@@ -10,7 +10,7 @@ will not magically shrink when put into one of these archives. There are other
 tools for that.
 2. This is probably vulnerable to various types of attacks. At the moment, I 
 have no plans of really securing the hell out of this program, and by the time 
-you need really serious protection from trained prying eyes, you will be 
+you need really serious protection from trained prying eyes, you should be 
 looking much further than this piece of crap.
 
 
