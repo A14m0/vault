@@ -479,22 +479,47 @@ fn main() {
                             .long("datafile")
                             .value_name("FILE")
                             .takes_value(true)
-                            .required(true)
                             .help("Path to the storage file I should access"))
+                        .arg(Arg::with_name("new")
+                            .short("n")
+                            .long("new")
+                            .value_name("FILE")
+                            .takes_value(true)
+                            .help("Creates a new archive with name FILE"))
                         .get_matches();
 
     let mut dfile: Datafile;
-    let path = match matches.value_of("datafile") {
-        Some(a) => a.to_string(),
-        None => panic!("Failed to get argument value: no argument value provided")
-    };
+    let path: String;
 
     // see if we are gonna try to make a new file or if we are working with a pre-existing one
+    if !matches.is_present("new") && !matches.is_present("datafile") {
+        println!("[-] Missing arguments");
+        println!("{}", matches.usage());
+        std::process::exit(1);
+    }
+
     let aes_pass = get_pass();
-    dfile = match Datafile::checked_new(path, aes_pass){
-        Ok(a) => a,
-        Err(e) => panic!("Failed to read data file: {}", e)
-    };
+    if matches.is_present("new") {
+        path = match matches.value_of("new") {
+            Some(a) => a.to_string(),
+            None => panic!("failed to get argument value: no argument value provided")
+        };
+        dfile = match Datafile::setup_new(aes_pass, path) {
+            Ok(a) => a,
+            Err(e) => panic!("Failed to create new data file: {}", e)
+        }
+    } else {
+        path = match matches.value_of("datafile") {
+            Some(a) => a.to_string(),
+            None => panic!("Failed to get argument value: no argument value provided")
+        };
+        dfile = match Datafile::checked_new(path, aes_pass){
+            Ok(a) => a,
+            Err(e) => panic!("Failed to read data file: {}", e)
+        };
+    }
+
+    
     
     // begin our main interaction loop
     loop {
