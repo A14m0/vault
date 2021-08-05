@@ -1,5 +1,6 @@
 use std::io::Read;
 use std::io::Write;
+use std::str;
 
 use openssl::symm::*;
 use hmac_sha256::Hash;
@@ -45,7 +46,11 @@ pub struct Datafile {
 /// implement print formatting for EncFile
 impl std::fmt::Display for EncFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} ({} bytes @ {} offset)", self.name, self.size, self.offset)
+        let tmpbf = match str::from_utf8(&self.name) {
+            Ok(a) => a,
+            Err(e) => panic!("Unable to convert filename to string: {}", e)
+        };
+        write!(f, "{} ({} bytes)", tmpbf, self.size)
     }
 }
 
@@ -58,6 +63,7 @@ impl std::fmt::Display for Datafile {
 
 ////////////////////////// ENCFILE FUNCTIONS //////////////////////////
 impl EncFile {
+    #[allow(dead_code)]
     fn new(name: Vec<u8>, size: usize, offset: usize, load_self: Option<&Vec<u8>>) -> Self {
         // see if we are gonna load the file from
         let location: StorageLocation; 
@@ -98,21 +104,25 @@ impl EncFile {
     }
 
     /// gets the file's name (cloned already)
+    #[allow(dead_code)]
     pub fn get_fname(&self) -> Vec<u8> {
         self.name.clone()
     }
 
     /// gets the file's size
+    #[allow(dead_code)]
     pub fn get_fsize(&self) -> usize {
         self.size
     }
 
     /// gets the file's start offset
+    #[allow(dead_code)]
     pub fn get_foffset(&self) -> usize {
         self.offset
     }
 
     /// loads the data of the file into memory
+    #[allow(dead_code)]
     pub fn set_file_data(&mut self, path: String) -> Result<(), String> {
         // try to open the new file
         let mut f = match std::fs::File::open(path) {
@@ -120,7 +130,6 @@ impl EncFile {
             Err(e) => return Err(e.to_string())
         };
 
-        let fsize = f.metadata().unwrap().len();
         let mut data: Vec<u8> = Vec::new();
         
         // copy the file's data to the data vector
@@ -138,6 +147,7 @@ impl EncFile {
         Ok(())
     }
 
+    /// sets the direct contents of the file data
     fn set_file_vec(&mut self, dat: &mut Vec<u8>) -> Result<(), String> {
         // update the variables we have in this file
         self.fdat.clear();
@@ -176,7 +186,7 @@ impl Datafile {
         // set up our checker vector
         let mut fvec = vec![0u8; MAGIC_BYTES.len()];
         fvec.copy_from_slice(MAGIC_BYTES);
-        for i in 0..4 {
+        for _ in 0..4 {
             fvec.push(0);
         }
         println!("Length of data: {}", fvec.len());
@@ -445,7 +455,11 @@ impl Datafile {
 
         // return the size
         size
+    }
 
+    /// updates the AES passphrase for the database
+    pub fn update_pass(&mut self, pass: String) {
+        self.aes_pass = pass_to_hash(pass)
     }
 
 
