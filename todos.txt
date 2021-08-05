@@ -1,5 +1,4 @@
 1. Implement args for fetch
-2. Improve argument parsing for all FUNCTIONS
-3. Implement remove
+2. Improve argument parsing for all commands
 4. Clean up colored printouts
 5. Improve documentation
