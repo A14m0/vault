@@ -1,5 +1,5 @@
 [package]
-name = "fs2file"
+name = "vault"
 version = "0.1.0"
 edition = "2018"
 
