@@ -43,12 +43,12 @@ const COMMS: [Command; 9] = [
         Command{
             value: "remove",
             help: "Removes a file from the current state",
-            command: ls
+            command: remove
         },
         Command{
             value: "fetch",
             help: "Fetches a file from the current state and saves it to the filesystem",
-            command: ls
+            command: fetch
         },
         Command{
             value: "pass",
@@ -101,8 +101,52 @@ fn ls(_args: String, dfile: &mut Datafile) -> u32 {
 }
 
 /// loads a new file
-fn load(_args: String, _dfile: &mut Datafile) -> u32 {
-    0
+fn load(args: String, dfile: &mut Datafile) -> u32 {
+    let passwd = get_pass();
+        
+    if !args.is_empty() {
+        let path: &str;
+        // see if we can save to the first path provided by the arguments
+        if args.contains(" ") {
+            let space_index = args.as_bytes().iter().position(|&r| r == b' ').unwrap();
+            path = &args[..space_index];
+        } else {
+            path = &args[..];
+        }
+
+        println!("{}: {}","[ ] Opening database file".yellow(), path);
+        match dfile.load_new(path.to_string(), passwd.clone()) {
+            Ok(_) => {
+                println!("{}", "[+] Success!".green());
+                return 0
+            },
+            Err(e) => {
+                println!("{}: {}", "[-] Failed to save file".red(), e);
+            }
+        };
+    } 
+
+    // assuming something doesnt work or we dont get args, we just loop to try 
+    // and save the user's file
+    loop {
+        let passwd_clone = passwd.clone();
+        print!("{}", "[ ] Enter path to the database > ");
+        std::io::stdout().flush().unwrap();
+    
+        let mut path = String::new();
+        std::io::stdin().read_line(&mut path).expect("Failed to read STDIN");
+        let path = path.replace("\n", "");
+        
+        // try to save the file
+        match dfile.load_new(path, passwd_clone) {
+            Ok(_) => {
+                println!("{}", "[+] Success!".green());
+                return 0
+            },
+            Err(e) => println!("{}: {}", "[-] Failed to save file".red(), e)
+        };
+    }
+
 }
 
 /// saves to a file
@@ -133,30 +177,207 @@ fn save(args: String, dfile: &mut Datafile) -> u32 {
     
         let mut r = String::new();
         std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
+        let r = r.replace("\n", "");
         
         // try to save the file
         match dfile.save(r) {
-            Ok(_) => return 0,
+            Ok(_) => {
+                println!("{}", "[+] Success!".green());
+                return 0
+            },
             Err(e) => println!("{}: {}", "[-] Failed to save file".red(), e)
         };
     }
 }
 
 /// adds a file
-fn add(_args: String, _dfile: &mut Datafile) -> u32 {
-    0
+fn add(args: String, dfile: &mut Datafile) -> u32 {
+    // see if we got a path
+    if !args.is_empty() {
+        let path: &str;
+        // see if we can save to the first path provided by the arguments
+        if args.contains(" ") {
+            let space_index = args.as_bytes().iter().position(|&r| r == b' ').unwrap();
+            path = &args[..space_index];
+        } else {
+            path = &args[..];
+        }
+
+        println!("{}: {}","[ ] Adding file".yellow(), path);
+        let path = std::path::Path::new(path);
+        let name = match path.file_name() {
+            Some(a) => match a.to_os_string().into_string(){
+                Ok(b) => b.into_bytes(),
+                Err(_) => {
+                    println!("{}", "[-] Failed to parse path".red());
+                    return 1
+                }
+            },
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+
+        let path = match path.to_str(){
+            Some(a) => a.to_string(),
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+
+        match dfile.add_file(name, path) {
+            Ok(_) => return 0,
+            Err(e) => println!("{}: {}", "[-] Failed to save file".red(), e)
+        };
+    } 
+
+    // assuming something doesnt work or we dont get args, we just loop to try 
+    // and save the user's file
+    loop {
+        print!("{}", "[ ] Enter path to new file > ");
+        std::io::stdout().flush().unwrap();
+    
+        let mut r = String::new();
+        std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
+        let r = r.replace("\n", "");
+
+        println!("{}: {}","[ ] Adding file".yellow(), r);
+        let path = std::path::Path::new(&r);
+        let name = match path.file_name() {
+            Some(a) => match a.to_os_string().into_string(){
+                Ok(b) => b.into_bytes(),
+                Err(_) => {
+                    println!("{}", "[-] Failed to parse path".red());
+                    return 1
+                }
+            },
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+
+        let path = match path.to_str(){
+            Some(a) => a.to_string(),
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+        
+        // try to save the file
+        match dfile.add_file(name, path) {
+            Ok(_) => {
+                println!("{}", "[+] Success!".green());
+                return 0
+            },
+            Err(e) => println!("{}: {}", "[-] Failed to save file".red(), e)
+        };
+    }
 }
 
 /// removes a file
-#[allow(dead_code)]
 fn remove(_args: String, _dfile: &mut Datafile) -> u32 {
     0
 }
 
 /// fetches a file and stores it wherever the user wants it to be stored
-#[allow(dead_code)]
-fn fetch(_args: String, _dfile: &mut Datafile) -> u32 {
-    0
+fn fetch(args: String, dfile: &mut Datafile) -> u32 {
+    
+    if !args.is_empty() {
+    
+        // Will work on the argument parsing part later... 
+        // gonna be a bit complicated with 2 potential args...
+        unimplemented!();
+    
+        let path: &str;
+        // see if we can save to the first path provided by the arguments
+        if args.contains(" ") {
+            let space_index = args.as_bytes().iter().position(|&r| r == b' ').unwrap();
+            path = &args[..space_index];
+        } else {
+            path = &args[..];
+        }
+
+        println!("{}: {}","[ ] Adding file".yellow(), path);
+        let path = std::path::Path::new(path);
+        let name = match path.file_name() {
+            Some(a) => match a.to_os_string().into_string(){
+                Ok(b) => b.into_bytes(),
+                Err(_) => {
+                    println!("{}", "[-] Failed to parse path".red());
+                    return 1
+                }
+            },
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+
+        let path = match path.to_str(){
+            Some(a) => a.to_string(),
+            None => {
+                println!("{}", "[-] Failed to parse path".red());
+                return 1
+            }
+        };
+
+        match dfile.add_file(name, path) {
+            Ok(_) => return 0,
+            Err(e) => println!("{}: {}", "[-] Failed to save file".red(), e)
+        };
+    } 
+
+    // assuming something doesnt work or we dont get args, we just loop to try 
+    // and save the user's file
+    loop {
+        ls("".to_string(), dfile);
+
+        print!("{}", "[ ] Enter file name > ");
+        std::io::stdout().flush().unwrap();
+    
+        let mut r = String::new();
+        std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
+        let r = r.replace("\n", "");
+        let fname = r.clone();
+        let r = r.into_bytes();
+
+        // loop over each file and see if the name is the same
+        for file in dfile.files() {
+            
+            if file.get_fname() == r {
+                print!("{}", "[ ] Enter file path to save > ");
+                std::io::stdout().flush().unwrap();
+    
+                let mut path = String::new();
+                std::io::stdin().read_line(&mut path).expect("Failed to read STDIN");
+                let path = path.replace("\n", "");
+
+                println!("{}: {}","[ ] Saving to filesystem".yellow(), path);
+                match dfile.save_to_file(file, path) {
+                    Ok(_) => {
+                        println!("{}", "[+] Success!");
+                        return 0
+                    },
+                    Err(e) => {
+                        println!("{}: {}", "[-] Failed to fetch file".red(), e);
+                        return 1
+                    }
+
+                }
+                
+            }
+        }
+
+        // if we get here, we know that the user failed to input the correct name
+        println!("{}: {}", "[-] No file by that name found".yellow(), fname);
+
+    }   
+
+
 }
 
 /// updates the current password
@@ -182,6 +403,7 @@ fn pass(args: String, dfile: &mut Datafile) -> u32 {
     std::io::stdout().flush().unwrap();
     let mut r = String::new();
     std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
+    let r = r.replace("\n", "");
     
     // try to save the file
     dfile.update_pass(r);
@@ -250,7 +472,7 @@ fn main() {
         if user_cmd.contains(" ") {
             let space_index = user_cmd.as_bytes().iter().position(|&r| r == b' ').unwrap();
             cmd = &user_cmd[..space_index];
-            args = &user_cmd[space_index..]
+            args = &user_cmd[space_index+1..]
         
         } else {
             cmd = &user_cmd[..];

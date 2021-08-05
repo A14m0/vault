@@ -72,12 +72,10 @@ impl EncFile {
                 let mut thing = vec![0u8;size];
                 thing.copy_from_slice(&a[..]);
                 location = StorageLocation::OwnMem;
-                println!("Storing as OwnMem");
                 thing
             },
             None => {
                 location = StorageLocation::DatFile;
-                println!("Storing as DatFile location");
                 Vec::new()
             }
         };
@@ -104,7 +102,6 @@ impl EncFile {
     }
 
     /// gets the file's name (cloned already)
-    #[allow(dead_code)]
     pub fn get_fname(&self) -> Vec<u8> {
         self.name.clone()
     }
@@ -246,13 +243,61 @@ impl Datafile {
         
         println!("Decryption successful");
         
-        Ok(Datafile::new(out, pass_to_hash(aes_pass)))
+        let mut df = Datafile::new(out, pass_to_hash(aes_pass));
+        df.parse_filetable()?;
+
+        Ok(df)
     }
 
     /// creates a new Datafile
     fn new(file_data: Vec<u8>, aes_pass: [u8; 32]) -> Self {
         let files: Vec<EncFile> = Vec::new();
         Datafile{file_data, aes_pass, files}
+    }
+
+    /// loads a new database from a file
+    pub fn load_new(&mut self, path: String, passwd: String) -> Result<(), String> {
+        let mut file_handle = match std::fs::File::open(path) {
+            Ok(a) => a,
+            Err(e) => panic!("Failed to open file: {}", e)
+        };
+        // try to read the file's data
+        let fsize = file_handle.metadata().unwrap().len();
+        let mut data: Vec<u8> = Vec::new();
+        // read the data from the file into the vector
+        let datread = match file_handle.read_to_end(&mut data) {
+            Ok(a) => a,
+            Err(e) => panic!("Failed to read file data ({})", e)
+        };
+        // make sure metadata and read data lengths match
+        assert_eq!(datread, fsize as usize, "Data lengths mismatch");
+        
+        
+    
+        let pass = pass_to_hash(passwd.clone());
+        
+        let t = Cipher::aes_256_cbc();
+        let mut out = decrypt(t, &pass, Some(IV), &data[..]).unwrap();
+        
+        // assert that the data begins with the magic bytes 
+        if &out[..16] != MAGIC_BYTES{ 
+            println!("Failed");
+            println!("Current: {:?}", out);
+            println!("Magic: {:?}", MAGIC_BYTES);
+            return Err("Magic bytes not found".to_string());
+        };
+        
+        println!("Decryption successful");
+        
+        self.file_data.clear();
+        self.file_data.append(&mut out);
+        self.aes_pass = pass_to_hash(passwd.clone());
+        self.files.clear();
+
+        self.parse_filetable()?;
+
+        Ok(())
+
     }
 
 
@@ -394,23 +439,18 @@ impl Datafile {
 
         // calculate and update the offsets of each file, as well as write the data
         for encf in self.files.iter_mut() {
-            println!("Looping for file {}", encf);
             // Make sure the EncFile has its data stored locally 
             match &encf.location {
                 StorageLocation::DatFile => {
                     let mut  dat = vec![0u8; encf.size];
-                    println!("Offset: {}-{}", encf.offset, encf.offset +encf.size);
                     let data = &self.file_data[encf.offset..encf.offset+encf.size];
-                    //println!("{:?}", data);
                     dat.copy_from_slice(data);
                     match encf.set_file_vec(&mut dat) {
                         Ok(_) => (),
                         Err(e) => return Err(e)
                     };
                 },
-                StorageLocation::OwnMem => {
-                    println!("Currently stored in itself");
-                }
+                StorageLocation::OwnMem => ()
             };
 
             // update our counters
@@ -422,9 +462,6 @@ impl Datafile {
             for byte in encf.serialize() {
                 write_buffer.push(byte);
             }
-
-            // update the file's offsets
-            println!("New offset: {}", encf.offset);
         }
 
         // now write all the file's data sequentially
@@ -434,11 +471,9 @@ impl Datafile {
                 Ok(a) => a,
                 Err(e) => return Err(e)
             };
-            println!("{:?}", fdat);
             for byte in fdat.iter() {
                 write_buffer.push(*byte);
             }
-            println!("Write_buffer is: {}", write_buffer.len());
         }
 
         Ok(write_buffer)
@@ -460,6 +495,32 @@ impl Datafile {
     /// updates the AES passphrase for the database
     pub fn update_pass(&mut self, pass: String) {
         self.aes_pass = pass_to_hash(pass)
+    }
+
+    /// saves the decoded EncFile to a path 
+    pub fn save_to_file(&self, file: &EncFile, path: String) -> Result<(), String> {
+        let mut file_handle = match std::fs::File::create(path) {
+            Ok(a) => a,
+            Err(e) => panic!("Failed to open file: {}", e)
+        };
+        let size = file.size;
+
+        let mut retvec: Vec<u8> = vec![0u8; size];
+                
+        let data = match file.get_fdat() {
+            Ok(a) => a,
+            Err(_) => { 
+                // we know that the data is not stored in the file structure
+                // itself, so we manually fetch it internally
+                let offset = file.offset;
+                retvec.copy_from_slice(&self.file_data[offset..offset+size]);
+                &retvec
+            }
+        };
+
+        file_handle.write_all(data).unwrap();
+        
+        Ok(())
     }
 
 
