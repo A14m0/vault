@@ -42,6 +42,17 @@ pub struct Datafile {
 }
 
 
+/////////////////////////// PARTIALEQ IMPL //////////////////////////////////
+impl PartialEq for EncFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && 
+        self.offset == other.offset &&
+        self.size == other.size 
+    }
+}
+
+
+
 /////////////////////////// DISPLAY IMPL ////////////////////////////////////
 /// implement print formatting for EncFile
 impl std::fmt::Display for EncFile {
@@ -408,6 +419,11 @@ impl Datafile {
         &self.files
     }
 
+    /// returns a mutable vector of all parsed EncFiles 
+    pub fn files_mut(&mut self) -> &mut Vec<EncFile> {
+        &mut self.files
+    }
+
     /// dumps the decrypted data from the database to a file
     pub fn dump_self(&mut self) {
         let mut f = match std::fs::File::create("Dump.bin") {
@@ -523,5 +539,16 @@ impl Datafile {
         Ok(())
     }
 
+    /// removes an EncFile by reference
+    pub fn remove_file(&mut self, file: &EncFile) {
+        // find the index
+        let index = self.files.iter().position(|x| x == file).unwrap();
+        self.files.remove(index);
+    }
+
+    /// removes an EncFile by index
+    pub fn remove_file_idx(&mut self, file_index: usize) {
+        self.files.remove(file_index);
+    }
 
 }

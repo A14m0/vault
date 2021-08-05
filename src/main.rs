@@ -279,8 +279,45 @@ fn add(args: String, dfile: &mut Datafile) -> u32 {
 }
 
 /// removes a file
-fn remove(_args: String, _dfile: &mut Datafile) -> u32 {
-    0
+fn remove(_args: String, dfile: &mut Datafile) -> u32 {
+    loop {
+        ls("".to_string(), dfile);
+
+        print!("{}", "[ ] Enter file name > ");
+        std::io::stdout().flush().unwrap();
+    
+        let mut r = String::new();
+        std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
+        let r = r.replace("\n", "");
+        let fname = r.clone();
+        let r = r.into_bytes();
+
+        let mut idx: i32 = 0;
+        let mut found_idx: i32 = -1;
+        // loop over each file and see if the name is the same
+        for file in dfile.files_mut().iter_mut() {
+            
+            if file.get_fname() == r {
+                found_idx = idx;
+                break;                
+            }
+            idx += 1;
+        }
+
+        // see if we found the file
+        if found_idx != -1 {
+            println!("{}: {}", "[ ] Removing file", fname.clone());
+                
+            dfile.remove_file_idx(found_idx as usize);
+            println!("{}", "[+] Success!");
+            return 0
+            
+        }
+
+        // if we get here, we know that the user failed to input the correct name
+        println!("{}: {}", "[-] No file by that name found".yellow(), fname);
+
+    }
 }
 
 /// fetches a file and stores it wherever the user wants it to be stored
