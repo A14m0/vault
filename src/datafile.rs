@@ -356,7 +356,7 @@ impl Datafile {
         // now that we know the number of files in the thing, try to read the 
         // file's information from the table
         let mut read_bytes = 16+8; // we have read the magic bytes and the number of files
-        for i in 0..num_files {
+        for _ in 0..num_files {
             let mut name_vec: Vec<u8> = Vec::new();
             
             // read until we find the nullterm of the file's name
