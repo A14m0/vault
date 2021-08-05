@@ -7,11 +7,11 @@ Two things to note however:
 
 1. This does not provide any kind of compression. The size of the files you add
 will not magically shrink when put into one of these archives. There are other
-tools for that, if you need compression.
-2. This is probably insecure to various types of attacks. At the moment, I have
-no plans of really securing the hell out of this program, as by the time you 
-need really serious protection from trained prying eyes, you will be looking 
-much further than this piece of crap.
+tools for that.
+2. This is probably vulnerable to various types of attacks. At the moment, I 
+have no plans of really securing the hell out of this program, and by the time 
+you need really serious protection from trained prying eyes, you will be 
+looking much further than this piece of crap.
 
 
 ## Building and Usage
