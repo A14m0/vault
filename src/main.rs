@@ -1,5 +1,6 @@
 use clap::{Arg, App};
 use colored::Colorize;
+use rpassword::prompt_password_stdout;
 use std::io::prelude::*;
 
 mod datafile;
@@ -450,13 +451,9 @@ fn pass(args: String, dfile: &mut Datafile) -> u32 {
 /// like `pass()`, but instead returns string of password. Useful for states 
 /// before Datafile is initialized
 fn get_pass() -> String {
-    print!("{}", "[ ] Enter password > ".green());
-    std::io::stdout().flush().unwrap();
-    let mut r = String::new();
-    std::io::stdin().read_line(&mut r).expect("Failed to read STDIN");
-    let r = r.replace("\n", "");
-    
-    r
+    prompt_password_stdout(
+        &format!("{}", "[ ] Enter password > ".green())[..]
+    ).unwrap()
 }
 
 /// prints help info
@@ -489,7 +486,7 @@ fn main() {
                         .get_matches();
 
     let mut dfile: Datafile;
-    let path: String;
+    let mut path: String;
 
     // see if we are gonna try to make a new file or if we are working with a pre-existing one
     if !matches.is_present("new") && !matches.is_present("datafile") {
@@ -498,27 +495,42 @@ fn main() {
         std::process::exit(1);
     }
 
-    let aes_pass = get_pass();
-    if matches.is_present("new") {
-        path = match matches.value_of("new") {
-            Some(a) => a.to_string(),
-            None => panic!("failed to get argument value: no argument value provided")
-        };
-        dfile = match Datafile::setup_new(aes_pass, path) {
-            Ok(a) => a,
-            Err(e) => panic!("Failed to create new data file: {}", e)
+    // loop until the user has successfully decrypted the file
+    loop {
+        let aes_pass = get_pass();
+        if matches.is_present("new") {
+            match matches.value_of("new") {
+                Some(a) => {
+                    path = a.to_string();
+                    match Datafile::setup_new(aes_pass, path) {
+                        Ok(a) => {
+                            dfile = a;
+                            break;
+                        },
+                        Err(e) => println!("{}{}", "[-] Failed to create new data file: ".red(), e)
+                    }
+                },
+                None => println!("{}", "[-] Failed to get argument value: no argument value provided".red())
+            };
+        } else {
+            match matches.value_of("datafile") {
+                Some(a) => {
+                    path = a.to_string();
+                    match Datafile::checked_new(path, aes_pass){
+                        Ok(a) => {
+                            dfile = a;
+                            break;
+                        },
+                        Err(e) => println!("{}{}","[-] Failed to read data file: ".red(), e)
+                    };
+                },
+                None => println!("{}", "[-] Failed to get argument value: no argument value provided".red())
+            };
+            
         }
-    } else {
-        path = match matches.value_of("datafile") {
-            Some(a) => a.to_string(),
-            None => panic!("Failed to get argument value: no argument value provided")
-        };
-        dfile = match Datafile::checked_new(path, aes_pass){
-            Ok(a) => a,
-            Err(e) => panic!("Failed to read data file: {}", e)
-        };
-    }
 
+    }
+    
     
     
     // begin our main interaction loop

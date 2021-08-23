@@ -242,7 +242,10 @@ impl Datafile {
         let pass = pass_to_hash(aes_pass.clone());
         
         let t = Cipher::aes_256_cbc();
-        let out = decrypt(t, &pass, Some(IV), &data[..]).unwrap();
+        let out = match decrypt(t, &pass, Some(IV), &data[..]){
+            Ok(a) => a,
+            Err(e) => return Err(format!("{}", e))
+        };
         
         // assert that the data begins with the magic bytes 
         if &out[..16] != MAGIC_BYTES{ 
